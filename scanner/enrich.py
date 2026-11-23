@@ -22,6 +22,7 @@ _PREFIX = re.compile(r"^(?:koncert|recital|wieczór z|spotkanie z)\s+", re.I)
 
 
 def norm(name: str) -> str:
+    name = name.translate(str.maketrans("łŁøØđĐß", "lLoOdDs"))
     s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
     s = re.sub(r"^the\s+", "", s)
     return re.sub(r"[^a-z0-9]+", " ", s).strip()
