@@ -35,15 +35,16 @@ def show(url, accept="*/*", n=300):
     return body
 
 
-print("=== EVENTIM ===")
-show("https://www.eventim.pl/robots.txt")
-for v in ["v2/productGroups", "v1/products"]:
-    show(f"https://public-api.eventim.com/websearch/search/api/exploration/{v}?webId=web__eventim-pl&language=pl&page=1&categories=Koncerty", "application/json")
-show("https://www.eventim.pl/city/warszawa-25/")
-show("https://www.eventim.pl/artist/sting/")
-
-print("\n=== BILETYNA ===")
-b = show("https://biletyna.pl/robots.txt")
-show("https://biletyna.pl/sitemap.xml")
-show("https://biletyna.pl/koncerty")
-show("https://biletyna.pl/Koncerty")
+print("=== BILETYNA 2 ===")
+body = show("https://biletyna.pl/sitemap/sitemap-events.xml")
+locs = re.findall(r"<loc>([^<]+)</loc>", body)
+lm = re.findall(r"<lastmod>([^<]+)</lastmod>", body)
+print("  lastmod sample:", lm[:3])
+kon = [l for l in locs if re.search(r"koncert|muzyk|concert", l, re.I)]
+print(f"  koncert-like locs={len(kon)}:", " | ".join(kon[:10]))
+cats = show("https://biletyna.pl/sitemap/sitemap-categories.xml")
+for u in [l for l in re.findall(r"<loc>([^<]+)</loc>", cats) if re.search(r"koncert|muzyk", l, re.I)][:2]:
+    show(u)
+for u in (kon[:2] or locs[:2]):
+    body = show(u)
+    print("  snippet:", re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body))[:1500])
