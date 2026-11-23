@@ -1,0 +1,8 @@
+# Strona z koncertami. Po kupnie domeny zamień ":8080" na np. koncerty.twojadomena.pl
+# (Caddy sam wyrobi certyfikat HTTPS).
+:8080 {
+	root * /var/www/koncerty
+	file_server
+	encode gzip
+	header /data/* Cache-Control "no-cache"
+}
