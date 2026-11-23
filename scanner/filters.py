@@ -18,6 +18,16 @@ FAKE = re.compile(
 CANDLE = re.compile(r"candle|przy [sś]wiecach|w[sś]r[oó]d (?:kwiat[oó]w i )?[sś]wiec|w blasku (?:tysi[eę]cy )?[sś]wiec", re.I)
 
 
+# Festiwale – osobna kategoria, z line-upem zamiast jednego wykonawcy.
+FESTIVAL = re.compile(
+    r"festiwal|festival|\bfest\b|open'?er|orange warsaw|pol'?and'?rock|audioriver|off festival|"
+    r"nowa muzyka|mystic festival|kraków live|summer fusion|fest festival|sunrise|up to date", re.I)
+
+
+def is_festival(ev: dict) -> bool:
+    return ev.get("genre") == "festiwal" or bool(FESTIVAL.search(ev["title"]))
+
+
 def is_candle(ev: dict) -> bool:
     return bool(CANDLE.search(ev["title"]))
 

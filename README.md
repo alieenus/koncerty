@@ -20,6 +20,7 @@ Strona z koncertami zagranicznych artystów w Polsce (kto, kiedy, gdzie). Skan c
 - `min_fans_unknown_country`: wyższy próg, gdy MusicBrainz nie zna kraju artysty,
 - `watchlist`: artyści, o których chcesz dostawać powiadomienia,
 - `notify_all_new`: `true` oznacza powiadomienia o każdym nowym koncercie,
+- `festivals`: festiwale pokazywane zawsze, z listą gwiazd z line-upu (powiadomienie, gdy w line-upie pojawi się ktoś z `watchlist`),
 - `candlelight` / `notify_candlelight`: pokazywanie koncertów przy świecach i powiadamianie o nich,
 - `include_artists`: artyści pokazywani zawsze, niezależnie od kraju i popularności (np. polskie gwiazdy),
 - `force_foreign` / `force_polish`: ręczne poprawki, gdy automatyczne rozpoznanie się pomyli.

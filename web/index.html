@@ -29,6 +29,7 @@ h2.month{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(
 .when{font-weight:600;margin-top:4px}
 .where,.title{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
 .title{font-style:italic}
+.lineup{font-size:13px;margin-top:4px;overflow-wrap:anywhere}
 .tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .tag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--muted)}
 .tag.new{background:var(--new);color:#fff}
@@ -76,7 +77,7 @@ function render(){
     if (city && !c.cities.concat(c.venue_city || []).includes(city)) return false;
     if (src && !c.links.some(l => l.source === src)) return false;
     if (onlyNew && now - new Date(c.first_seen) > WEEK) return false;
-    if (q && ![c.artist, c.title, c.venue, ...c.cities].join(' ').toLowerCase().includes(q)) return false;
+    if (q && ![c.artist, c.title, c.venue, ...c.cities, ...(c.lineup || [])].join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
   if (!rows.length){ $('#list').innerHTML = '<div class="empty">Brak koncertów dla tych filtrów.</div>'; return; }
@@ -94,6 +95,7 @@ function render(){
         <div class="when">${esc(fmtDate(c.date))}</div>
         <div class="where">📍 ${esc(where)}${more}</div>
         ${c.title && c.title.toLowerCase() !== c.artist.toLowerCase() ? `<div class="title">${esc(c.title)}</div>` : ''}
+        ${c.lineup && c.lineup.length ? `<div class="lineup">⭐ ${c.lineup.slice(0,12).map(esc).join(' · ')}${c.lineup.length > 12 ? ` <span>+${c.lineup.length - 12}</span>` : ''}</div>` : ''}
         <div class="tags">
           ${isNew ? '<span class="tag new">NOWE</span>' : ''}
           ${c.sold_out ? '<span class="tag sold">wyprzedane</span>' : ''}

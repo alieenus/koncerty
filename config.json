@@ -2,6 +2,7 @@
   "min_fans": 100000,
   "min_fans_unknown_country": 500000,
   "candlelight": true,
+  "festivals": true,
   "watchlist": [
     "Backstreet Boys"
   ],

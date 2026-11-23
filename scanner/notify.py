@@ -21,7 +21,8 @@ def _send(token: str, chat: str, text: str):
 def _fmt(m: dict) -> str:
     where = ", ".join(filter(None, [m.get("venue"), m.get("venue_city") or ", ".join(m["cities"])]))
     links = "\n".join(f'<a href="{l["url"]}">Bilety: {l["source"]}</a>' for l in m["links"])
-    return f"🎤 <b>{m['artist']}</b>\n📅 {m['date'].replace('T', ' ')}\n📍 {where}\n{links}"
+    fest = f"\n🎪 {m['festival_name']}" if m.get("festival_name") else ""
+    return f"🎤 <b>{m['artist']}</b>{fest}\n📅 {m['date'].replace('T', ' ')}\n📍 {where}\n{links}"
 
 
 def send_new(new: list[dict], cfg: dict):

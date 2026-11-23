@@ -81,6 +81,7 @@ class T(unittest.TestCase):
 
             with mock.patch.object(main, "DATA", data), mock.patch.object(main, "OUT", out), \
                  mock.patch.object(main, "load_config", cfg_on), \
+                 mock.patch.object(main.venues, "fetch", return_value=[]), \
                  mock.patch.object(ebilet, "get_json", return_value=EBILET), \
                  mock.patch.object(going, "get", side_effect=fake_get), \
                  mock.patch.object(biletyna, "get", side_effect=lambda u, **k: BIL_SITEMAP if "sitemap" in u else BIL_PAGE) as bget, \
@@ -113,6 +114,38 @@ class T(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Festivals(unittest.TestCase):
+    def test_festival_with_lineup(self):
+        ev = {"source": "eBilet", "title": "Open'er Festival 2099", "artists": ["Backstreet Boys", "Guzior", "Nikt Znany"],
+              "date": "2099-07-01T16:00", "date_to": None, "cities": ["Gdynia"], "venue": "Lotnisko", "venue_city": "Gdynia",
+              "genre": "festiwal", "organizer": None, "url": "https://x/o", "image": None, "sold_out": False}
+        self.assertTrue(filters.is_festival(ev))
+        self.assertTrue(filters.is_festival({"title": "Audioriver 2099", "genre": "inne"}))
+        self.assertFalse(filters.is_festival({"title": "Metallica M72", "genre": "metal"}))
+        with tempfile.TemporaryDirectory() as d:
+            data, out = Path(d) / "data", Path(d) / "out.json"
+            data.mkdir()
+            (data / "artists.json").write_text(json.dumps({**ARTISTS, "nikt znany": {"name": "Nikt Znany", "country": "US", "fans": 5, "checked": 9e12}}))
+            with mock.patch.object(main, "DATA", data), mock.patch.object(main, "OUT", out), \
+                 mock.patch.object(ebilet, "fetch", return_value=[ev]), \
+                 mock.patch.object(biletyna, "get", return_value="<urlset></urlset>"), \
+                 mock.patch.object(main.venues, "fetch", return_value=[]):
+                os.environ.pop("TM_API_KEY", None)
+                main.run()
+                c = json.loads(out.read_text())["concerts"]
+                self.assertEqual(len(c), 1)
+                self.assertEqual(c[0]["genre"], "festiwal")
+                self.assertEqual(c[0]["lineup"], ["Backstreet Boys"])
+                # drugi skan: do line-upu dochodzi Guzior? nie (PL) – ale dopisanie BSB do innego festiwalu = powiadomienie
+                ev2 = {**ev, "title": "Orange Warsaw Festival 2099", "url": "https://x/ow"}
+                with mock.patch.object(ebilet, "fetch", return_value=[ev, ev2]), \
+                     mock.patch.object(main.notify, "send_new") as sn:
+                    main.run()
+                    new = sn.call_args[0][0]
+                    self.assertIn(("Backstreet Boys", "Orange Warsaw Festival 2099"),
+                                  [(n["artist"], n.get("festival_name")) for n in new])
 
 
 class Venues(unittest.TestCase):
