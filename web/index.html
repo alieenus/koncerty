@@ -48,6 +48,7 @@ footer{max-width:1100px;margin:0 auto;padding:0 16px 32px;color:var(--muted);fon
   <input type="search" id="q" placeholder="Szukaj artysty, miasta, klubu…" autocomplete="off">
   <select id="genre"><option value="">Wszystkie gatunki</option></select>
   <select id="city"><option value="">Wszystkie miasta</option></select>
+  <select id="source"><option value="">Wszystkie serwisy</option></select>
   <label class="tg"><input type="checkbox" id="onlyNew"> tylko nowe (7 dni)</label>
 </div></div>
 <main id="list"></main>
@@ -68,11 +69,12 @@ function cityOf(c){ return c.venue_city || (c.cities[0] || ''); }
 
 function render(){
   const q = $('#q').value.trim().toLowerCase();
-  const g = $('#genre').value, city = $('#city').value, onlyNew = $('#onlyNew').checked;
+  const g = $('#genre').value, city = $('#city').value, src = $('#source').value, onlyNew = $('#onlyNew').checked;
   const now = Date.now();
   const rows = DATA.filter(c => {
     if (g && c.genre !== g) return false;
     if (city && !c.cities.concat(c.venue_city || []).includes(city)) return false;
+    if (src && !c.links.some(l => l.source === src)) return false;
     if (onlyNew && now - new Date(c.first_seen) > WEEK) return false;
     if (q && ![c.artist, c.title, c.venue, ...c.cities].join(' ').toLowerCase().includes(q)) return false;
     return true;
@@ -110,17 +112,18 @@ function fillSelect(sel, values){
 fetch('data/concerts.json', {cache:'no-cache'}).then(r => r.json()).then(d => {
   DATA = d.concerts;
   const upd = new Date(d.updated).toLocaleString('pl-PL', {dateStyle:'medium', timeStyle:'short'});
-  $('#meta').textContent = `${d.count} koncertów zagranicznych artystów · aktualizacja: ${upd} · skan co 6 godzin`;
+  $('#meta').textContent = `${d.count} koncertów · aktualizacja: ${upd} · skan co 6 godzin`;
   const count = (arr) => Object.entries(arr.reduce((a,x)=>(a[x]=(a[x]||0)+1,a),{})).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
   fillSelect($('#genre'), count(DATA.map(c => c.genre)));
   fillSelect($('#city'), count(DATA.map(cityOf).filter(Boolean)));
+  fillSelect($('#source'), count(DATA.flatMap(c => c.links.map(l => l.source))));
   $('#foot').textContent = 'Źródła: ' + Object.entries(d.sources).map(([k,v]) => v.ok ? `${k} (${v.count})` : `${k} (błąd)`).join(', ');
-  try { const s = JSON.parse(localStorage.getItem('koncerty-filtry') || '{}'); for (const k of ['q','genre','city']) if (s[k]) $('#'+k).value = s[k]; } catch {}
+  try { const s = JSON.parse(localStorage.getItem('koncerty-filtry') || '{}'); for (const k of ['q','genre','city','source']) if (s[k]) $('#'+k).value = s[k]; } catch {}
   render();
 }).catch(() => { $('#meta').textContent = 'Nie udało się wczytać danych.'; });
 
-for (const id of ['q','genre','city','onlyNew']) $('#'+id).addEventListener('input', () => {
-  try { localStorage.setItem('koncerty-filtry', JSON.stringify({q:$('#q').value, genre:$('#genre').value, city:$('#city').value})); } catch {}
+for (const id of ['q','genre','city','source','onlyNew']) $('#'+id).addEventListener('input', () => {
+  try { localStorage.setItem('koncerty-filtry', JSON.stringify({q:$('#q').value, genre:$('#genre').value, city:$('#city').value, source:$('#source').value})); } catch {}
   render();
 });
 </script>
