@@ -82,6 +82,7 @@ class T(unittest.TestCase):
             with mock.patch.object(main, "DATA", data), mock.patch.object(main, "OUT", out), \
                  mock.patch.object(main, "load_config", cfg_on), \
                  mock.patch.object(main.venues, "fetch", return_value=[]), \
+                 mock.patch.object(main.biletserwis, "fetch", return_value=[]), \
                  mock.patch.object(ebilet, "get_json", return_value=EBILET), \
                  mock.patch.object(going, "get", side_effect=fake_get), \
                  mock.patch.object(biletyna, "get", side_effect=lambda u, **k: BIL_SITEMAP if "sitemap" in u else BIL_PAGE) as bget, \
@@ -131,7 +132,8 @@ class Festivals(unittest.TestCase):
             with mock.patch.object(main, "DATA", data), mock.patch.object(main, "OUT", out), \
                  mock.patch.object(ebilet, "fetch", return_value=[ev]), \
                  mock.patch.object(biletyna, "get", return_value="<urlset></urlset>"), \
-                 mock.patch.object(main.venues, "fetch", return_value=[]):
+                 mock.patch.object(main.venues, "fetch", return_value=[]), \
+                 mock.patch.object(main.biletserwis, "fetch", return_value=[]):
                 os.environ.pop("TM_API_KEY", None)
                 main.run()
                 c = json.loads(out.read_text())["concerts"]
@@ -146,6 +148,17 @@ class Festivals(unittest.TestCase):
                     new = sn.call_args[0][0]
                     self.assertIn(("Backstreet Boys", "Orange Warsaw Festival 2099"),
                                   [(n["artist"], n.get("festival_name")) for n in new])
+
+
+class BiletSerwis(unittest.TestCase):
+    def test_parse(self):
+        from scanner.sources import biletserwis
+        page = """<li><div class="fcell"><p class="first-line">30 maja 2027</p><p class="last-line">niedziela 20:00</p></div>
+<div class="scell"><div class="event-information-wrapper"><div><p class="event-title">Andrea Bocelli</p>
+<p class="event-location"> Superauto.pl Stadion Śląski, Chorzów</p></div></div></div></li>"""
+        e = biletserwis.parse_page(page, "https://biletserwis.pl/e/andrea-bocelli/")[0]
+        self.assertEqual((e["title"], e["date"], e["venue"], e["venue_city"]),
+                         ("Andrea Bocelli", "2027-05-30T20:00", "Superauto.pl Stadion Śląski", "Chorzów"))
 
 
 class Venues(unittest.TestCase):
