@@ -73,8 +73,10 @@ def run() -> int:
     status = {}
 
     raw: list[dict] = []
-    for name, fn in [("eBilet", ebilet.fetch), ("Going.", lambda: going.fetch(going_cache)),
-                     ("Ticketmaster", ticketmaster.fetch)]:
+    sources = [("eBilet", ebilet.fetch), ("Ticketmaster", ticketmaster.fetch)]
+    if cfg.get("going", False):  # wyłączone: strony Going. renderują dane w przeglądarce (do poprawy)
+        sources.insert(1, ("Going.", lambda: going.fetch(going_cache)))
+    for name, fn in sources:
         t0 = time.time()
         try:
             got = fn()

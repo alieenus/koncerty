@@ -56,11 +56,14 @@ class T(unittest.TestCase):
             data, out = Path(d) / "data", Path(d) / "out.json"
             data.mkdir()
             (data / "artists.json").write_text(json.dumps(ARTISTS))
+            real_cfg = main.load_config
+            cfg_on = lambda: {**real_cfg(), "going": True}
 
             def fake_get(url, **kw):
                 return GOING_SITEMAP if "sitemap" in url else GOING_PAGE
 
             with mock.patch.object(main, "DATA", data), mock.patch.object(main, "OUT", out), \
+                 mock.patch.object(main, "load_config", cfg_on), \
                  mock.patch.object(ebilet, "get_json", return_value=EBILET), \
                  mock.patch.object(going, "get", side_effect=fake_get), \
                  mock.patch.dict(os.environ, {}, clear=False):
