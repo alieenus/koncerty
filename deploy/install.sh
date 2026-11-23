@@ -24,7 +24,9 @@ install -m 644 /opt/koncerty/deploy/koncerty.service /opt/koncerty/deploy/koncer
 install -m 644 /opt/koncerty/deploy/nginx-koncerty.conf /etc/nginx/sites-available/koncerty
 ln -sf /etc/nginx/sites-available/koncerty /etc/nginx/sites-enabled/koncerty
 rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl reload nginx
+nginx -t
+systemctl enable --now nginx
+systemctl reload nginx
 
 # zapora: otwórz HTTP, jeśli ufw jest włączony
 if command -v ufw &>/dev/null && ufw status | grep -q active; then ufw allow 'Nginx Full'; fi
