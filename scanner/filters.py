@@ -13,7 +13,7 @@ FAKE = re.compile(
 
 
 # Koncerty przy świecach (Candlelight, „by Candle Glow” itp.) – osobna kategoria na stronie.
-CANDLE = re.compile(r"candle|przy świecach|wśród (?:kwiatów i )?świec|w blasku (?:tysięcy )?świec", re.I)
+CANDLE = re.compile(r"candle|przy [sś]wiecach|w[sś]r[oó]d (?:kwiat[oó]w i )?[sś]wiec|w blasku (?:tysi[eę]cy )?[sś]wiec", re.I)
 
 
 def is_candle(ev: dict) -> bool:
