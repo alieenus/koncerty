@@ -11,6 +11,7 @@ EnvironmentFile=-/etc/koncerty.env
 Environment=KONCERTY_DATA=/var/lib/koncerty
 Environment=KONCERTY_OUT=/var/www/koncerty/data/concerts.json
 # najpierw pobierz najnowszy kod z GitHuba, potem skanuj
+ExecStartPre=+/bin/chown -R koncerty:koncerty /opt/koncerty
 ExecStartPre=-/usr/bin/git -C /opt/koncerty pull --ff-only --quiet
 ExecStartPre=/usr/bin/install -m 644 /opt/koncerty/web/index.html /var/www/koncerty/index.html
 ExecStart=/usr/bin/python3 -m scanner.main
