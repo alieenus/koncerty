@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Skrót do obsługi skanera:  koncerty [status|log|skan|wyniki]
+case "${1:-status}" in
+  status)
+    printf "Skaner: "; s=$(systemctl is-active koncerty); [ "$s" = activating ] && echo "TRWA SKAN" || echo "czeka na następny skan"
+    systemctl list-timers koncerty.timer --no-pager | sed -n 2p | awk '{print "Następny skan: "$1" "$2" "$3}'
+    echo "--- ostatnie wpisy ---"
+    sudo journalctl -u koncerty -n 8 --no-pager -o cat ;;
+  log)   sudo journalctl -u koncerty -f -o cat ;;
+  skan)  sudo systemctl start --no-block koncerty && echo "Skan uruchomiony. Podgląd: koncerty log" ;;
+  wyniki)
+    python3 -c "import json;d=json.load(open('/var/www/koncerty/data/concerts.json'));print('Aktualizacja:',d['updated']);print('Koncertów:',d['count']);[print(f'  {k}: '+(str(v.get('count'))+' wydarzeń' if v.get('ok') else 'BŁĄD '+v.get('error','')[:80])) for k,v in d['sources'].items()]" ;;
+  *) echo "Użycie: koncerty [status|log|skan|wyniki]" ;;
+esac

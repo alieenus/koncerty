@@ -24,6 +24,7 @@ git config --system --add safe.directory /opt/koncerty
 [ -f /etc/koncerty.env ] || install -m 600 -o koncerty -g koncerty /opt/koncerty/deploy/koncerty.env.example /etc/koncerty.env
 
 install -m 644 /opt/koncerty/deploy/koncerty.service /opt/koncerty/deploy/koncerty.timer /etc/systemd/system/
+install -m 755 /opt/koncerty/deploy/koncerty /usr/local/bin/koncerty
 if [ "$USE_CADDY" = 1 ]; then
   # Na serwerze działa już Caddy: nie ruszamy nginx ani Caddyfile, stronę dopinasz ręcznie
   systemctl disable --now nginx 2>/dev/null || true
