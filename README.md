@@ -22,6 +22,7 @@ Strona z koncertami zagranicznych artystów w Polsce (kto, kiedy, gdzie). Skan c
 - `watchlist`: artyści, o których chcesz dostawać powiadomienia,
 - `notify_all_new`: `true` oznacza powiadomienia o każdym nowym koncercie,
 - `festivals`: festiwale pokazywane zawsze, z listą gwiazd z line-upu (powiadomienie, gdy w line-upie pojawi się ktoś z `watchlist`),
+- `festival_sites`: oficjalne strony festiwali, z których czytamy line-upy (nazwa, adres strony z line-upem, miasto),
 - `candlelight` / `notify_candlelight`: pokazywanie koncertów przy świecach i powiadamianie o nich,
 - `include_artists`: artyści pokazywani zawsze, niezależnie od kraju i popularności (np. polskie gwiazdy),
 - `force_foreign` / `force_polish`: ręczne poprawki, gdy automatyczne rozpoznanie się pomyli.

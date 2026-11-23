@@ -36,6 +36,8 @@ BIL_PAGE = """<script type="application/ld+json">{"@context":"https://schema.org
 "performer":{"@type":"PerformingGroup","name":"Backstreet Boys - Into The Millennium"}}]}</script>"""
 
 ARTISTS = {
+    "kendrick lamar": {"name": "Kendrick Lamar", "country": "US", "fans": 9000000, "checked": 9e12},
+    "bilety": {"name": "BILETY", "country": None, "fans": 0, "checked": 9e12},
     "backstreet boys": {"name": "Backstreet Boys", "country": "US", "fans": 1152023, "checked": 9e12},
     "guzior": {"name": "Guzior", "country": "PL", "fans": 300000, "checked": 9e12},
     "kaska sochacka": {"name": "Kaska Sochacka", "country": "PL", "fans": 90000, "checked": 9e12},
@@ -83,6 +85,7 @@ class T(unittest.TestCase):
                  mock.patch.object(main, "load_config", cfg_on), \
                  mock.patch.object(main.venues, "fetch", return_value=[]), \
                  mock.patch.object(main.biletserwis, "fetch", return_value=[]), \
+                 mock.patch.object(main.festivals, "fetch", return_value=[]), \
                  mock.patch.object(ebilet, "get_json", return_value=EBILET), \
                  mock.patch.object(going, "get", side_effect=fake_get), \
                  mock.patch.object(biletyna, "get", side_effect=lambda u, **k: BIL_SITEMAP if "sitemap" in u else BIL_PAGE) as bget, \
@@ -133,13 +136,16 @@ class Festivals(unittest.TestCase):
                  mock.patch.object(ebilet, "fetch", return_value=[ev]), \
                  mock.patch.object(biletyna, "get", return_value="<urlset></urlset>"), \
                  mock.patch.object(main.venues, "fetch", return_value=[]), \
-                 mock.patch.object(main.biletserwis, "fetch", return_value=[]):
+                 mock.patch.object(main.biletserwis, "fetch", return_value=[]), \
+                 mock.patch.object(main.festivals, "fetch", return_value=[{"name": "Open'er Festival", "url": "https://opener.pl/",
+                     "city": "Gdynia", "date": "2099-07-01", "candidates": ["Kendrick Lamar", "BILETY"]}]):
                 os.environ.pop("TM_API_KEY", None)
                 main.run()
                 c = json.loads(out.read_text())["concerts"]
                 self.assertEqual(len(c), 1)
                 self.assertEqual(c[0]["genre"], "festiwal")
-                self.assertEqual(c[0]["lineup"], ["Backstreet Boys"])
+                self.assertEqual(c[0]["lineup"], ["Backstreet Boys", "Kendrick Lamar"])  # + z oficjalnej strony
+                self.assertIn("Oficjalna strona", [l["source"] for l in c[0]["links"]])
                 # drugi skan: do line-upu dochodzi Guzior? nie (PL) – ale dopisanie BSB do innego festiwalu = powiadomienie
                 ev2 = {**ev, "title": "Orange Warsaw Festival 2099", "url": "https://x/ow"}
                 with mock.patch.object(ebilet, "fetch", return_value=[ev, ev2]), \

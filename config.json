@@ -3,6 +3,43 @@
   "min_fans_unknown_country": 500000,
   "candlelight": true,
   "festivals": true,
+  "festival_sites": [
+    {
+      "name": "Open'er Festival",
+      "url": "https://opener.pl/",
+      "city": "Gdynia"
+    },
+    {
+      "name": "Orange Warsaw Festival",
+      "url": "https://orangewarsawfestival.pl/",
+      "city": "Warszawa"
+    },
+    {
+      "name": "OFF Festival",
+      "url": "https://off-festival.pl/line-up/",
+      "city": "Katowice"
+    },
+    {
+      "name": "Audioriver",
+      "url": "https://audioriver.pl/",
+      "city": "Płock"
+    },
+    {
+      "name": "Mystic Festival",
+      "url": "https://mysticfestival.pl/",
+      "city": "Gdańsk"
+    },
+    {
+      "name": "Kraków Live Festival",
+      "url": "https://krakowlivefestival.pl/",
+      "city": "Kraków"
+    },
+    {
+      "name": "Tauron Nowa Muzyka",
+      "url": "https://nowamuzyka.pl/",
+      "city": "Katowice"
+    }
+  ],
   "watchlist": [
     "Backstreet Boys"
   ],

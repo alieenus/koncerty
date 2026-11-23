@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import enrich, filters, notify
-from .sources import biletserwis, biletyna, ebilet, going, ticketmaster, venues
+from .sources import biletserwis, biletyna, ebilet, festivals, going, ticketmaster, venues
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("KONCERTY_DATA", ROOT / "data"))
@@ -39,6 +39,7 @@ def load_config() -> dict:
     cfg.setdefault("min_fans", 100000)
     cfg.setdefault("candlelight", True)
     cfg.setdefault("festivals", True)
+    cfg.setdefault("festival_sites", festivals.DEFAULT_SITES)
     cfg.setdefault("min_fans_unknown_country", 500000)
     for k in ("force_foreign", "force_polish", "include_artists"):
         cfg[k] = {enrich.norm(x) for x in cfg.get(k, [])}
@@ -82,6 +83,34 @@ def add_festival(merged: dict, ev: dict, lineup_stars: list[str]):
             m["lineup"].append(a)
     if all(l["url"] != ev["url"] for l in m["links"]):
         m["links"].append({"source": ev["source"], "url": ev["url"]})
+
+
+def merge_festival_sites(merged: dict, fests: list[dict], cfg: dict, artists_cache: dict):
+    """Dokłada gwiazdy z oficjalnych stron do festiwali z serwisów (albo tworzy nowy wpis)."""
+    for f in fests:
+        stars = []
+        for name in f["candidates"]:
+            a = enrich.lookup(name, artists_cache, cfg["musicbrainz_user_agent"])
+            if filters.is_star(a, filters.classify(a, cfg), cfg) or enrich.norm(name) in cfg["watch_norm"]:
+                stars.append(a.get("name", name))
+        fname = enrich.norm(f["name"])
+        targets = [m for m in merged.values() if m.get("festival") and fname in enrich.norm(m["title"])]
+        if not targets:
+            if not f["date"]:
+                continue  # bez daty i bez wydarzenia w serwisach nie ma czego pokazać
+            ev = {"source": "Oficjalna strona", "title": f["name"], "artists": [], "date": f["date"],
+                  "date_to": None, "cities": [f["city"]] if f.get("city") else [], "venue": None,
+                  "venue_city": f.get("city"), "image": None, "url": f["url"], "sold_out": False}
+            add_festival(merged, ev, stars)
+            targets = [m for m in merged.values() if m.get("festival") and fname in enrich.norm(m["title"])]
+        for m in targets:
+            for a in stars:
+                if a not in m["lineup"]:
+                    m["lineup"].append(a)
+            m.setdefault("lineup_all", [])
+            m["lineup_all"] += [a for a in stars if a not in m["lineup_all"]]
+            if all(l["url"] != f["url"] for l in m["links"]):
+                m["links"].append({"source": "Oficjalna strona", "url": f["url"]})
 
 
 def run() -> int:
@@ -175,6 +204,16 @@ def run() -> int:
         if checked % 50 == 0:
             save(DATA / "artists.json", artists_cache)  # postęp przetrwa przerwanie skanu
     print(f"Sprawdzono {checked}/{len(raw)} wydarzeń (koniec)", flush=True)
+    if cfg["festivals"] and cfg["festival_sites"]:
+        t0 = time.time()
+        try:
+            fests = festivals.fetch(cfg["festival_sites"])
+            merge_festival_sites(merged, fests, cfg, artists_cache)
+            status["Strony festiwali"] = {"ok": True, "count": len(fests), "seconds": round(time.time() - t0, 1)}
+        except Exception as e:
+            traceback.print_exc()
+            status["Strony festiwali"] = {"ok": False, "error": str(e)[:200]}
+        print(f"Strony festiwali: {status['Strony festiwali']}", flush=True)
     save(DATA / "artists.json", artists_cache)
 
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
