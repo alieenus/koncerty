@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest import mock
 
 from scanner import enrich, filters, main
-from scanner.sources import ebilet, going
+from scanner.sources import biletyna, ebilet, going
 
 EBILET = {"titles": [
     {"title": "Backstreet Boys Into The Millennium Tour", "dateFrom": "2099-06-01T20:00:00", "dateTo": None,
@@ -28,9 +28,17 @@ GOING_PAGE = """<html><script type="application/ld+json">{"@context":"https://sc
 "location":{"@type":"Place","name":"PGE Narodowy","address":{"addressLocality":"Warszawa"}},
 "performer":[{"@type":"MusicGroup","name":"Backstreet Boys"}]}</script></html>"""
 
+BIL_SITEMAP = """<urlset><url><loc>https://biletyna.pl/koncert/Backstreet-Boys/Into-The-Millennium/Krakow</loc></url>
+<url><loc>https://biletyna.pl/koncert/Kaska-Sochacka/TA-DRUGA/Lublin</loc></url></urlset>"""
+BIL_PAGE = """<script type="application/ld+json">{"@context":"https://schema.org","@type":"PerformingGroup",
+"name":"Backstreet Boys - Into The Millennium","event":[{"@type":"MusicEvent","name":"Backstreet Boys - Into The Millennium",
+"startDate":"2099-06-05T20:00","location":{"@type":"Place","name":"Tauron Arena","address":{"addressLocality":"Kraków"}},
+"performer":{"@type":"PerformingGroup","name":"Backstreet Boys - Into The Millennium"}}]}</script>"""
+
 ARTISTS = {
     "backstreet boys": {"name": "Backstreet Boys", "country": "US", "fans": 1152023, "checked": 9e12},
     "guzior": {"name": "Guzior", "country": "PL", "fans": 300000, "checked": 9e12},
+    "kaska sochacka": {"name": "Kaska Sochacka", "country": "PL", "fans": 90000, "checked": 9e12},
 }
 
 
@@ -66,16 +74,22 @@ class T(unittest.TestCase):
                  mock.patch.object(main, "load_config", cfg_on), \
                  mock.patch.object(ebilet, "get_json", return_value=EBILET), \
                  mock.patch.object(going, "get", side_effect=fake_get), \
+                 mock.patch.object(biletyna, "get", side_effect=lambda u, **k: BIL_SITEMAP if "sitemap" in u else BIL_PAGE) as bget, \
                  mock.patch.dict(os.environ, {}, clear=False):
                 os.environ.pop("TM_API_KEY", None)
                 self.assertEqual(main.run(), 0)
                 res = json.loads(out.read_text())
-                # BSB + koncert przy świecach; Guzior (PL) odpada
-                self.assertEqual(res["count"], 2)
+                # BSB Warszawa + BSB Kraków (Biletyna) + koncert przy świecach; Guzior (PL) odpada
+                self.assertEqual(res["count"], 3)
+                krk = [c for c in res["concerts"] if c.get("venue_city") == "Kraków"]
+                self.assertEqual(krk[0]["artist"], "Backstreet Boys")
+                self.assertEqual(krk[0]["links"][0]["source"], "Biletyna")
+                # strona polskiej artystki nie była pobierana
+                self.assertFalse(any("Sochacka" in c.args[0] and "sitemap" not in c.args[0] for c in bget.call_args_list))
                 candle = [c for c in res["concerts"] if c.get("candle")]
                 self.assertEqual(len(candle), 1)
                 self.assertEqual(candle[0]["genre"], "przy świecach")
-                c = [c for c in res["concerts"] if not c.get("candle")][0]
+                c = [c for c in res["concerts"] if not c.get("candle") and c["venue_city"] == "Warszawa"][0]
                 self.assertEqual(c["artist"], "Backstreet Boys")
                 self.assertEqual({l["source"] for l in c["links"]}, {"eBilet", "Going."})  # deduplikacja
                 self.assertEqual(c["venue"], "PGE Narodowy")

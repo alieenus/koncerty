@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import enrich, filters, notify
-from .sources import ebilet, going, ticketmaster
+from .sources import biletyna, ebilet, going, ticketmaster
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("KONCERTY_DATA", ROOT / "data"))
@@ -72,8 +72,20 @@ def run() -> int:
     seen = load(DATA / "seen.json", {})
     status = {}
 
+    biletyna_cache = load(DATA / "biletyna_cache.json", {})
+
+    def wanted(name: str) -> bool:
+        """Czy warto pobierać szczegóły: gwiazda z zagranicy albo koncert przy świecach."""
+        if cfg["candlelight"] and filters.is_candle({"title": name}):
+            return True
+        if filters.is_fake({"title": name}):
+            return False
+        a = enrich.lookup(name, artists_cache, cfg["musicbrainz_user_agent"])
+        return filters.is_star(a, filters.classify(a, cfg), cfg)
+
     raw: list[dict] = []
-    sources = [("eBilet", ebilet.fetch), ("Ticketmaster", ticketmaster.fetch)]
+    sources = [("eBilet", ebilet.fetch), ("Biletyna", lambda: biletyna.fetch(biletyna_cache, wanted)),
+               ("Ticketmaster", ticketmaster.fetch)]
     if cfg.get("going", False):  # wyłączone: strony Going. renderują dane w przeglądarce (do poprawy)
         sources.insert(1, ("Going.", lambda: going.fetch(going_cache)))
     for name, fn in sources:
@@ -87,6 +99,8 @@ def run() -> int:
             status[name] = {"ok": False, "error": str(e)[:200]}
         print(f"{name}: {status[name]}", flush=True)
     save(DATA / "going_cache.json", going_cache)
+    save(DATA / "biletyna_cache.json", biletyna_cache)
+    save(DATA / "artists.json", artists_cache)
 
     today = datetime.now().strftime("%Y-%m-%d")
     merged: dict[str, dict] = {}
