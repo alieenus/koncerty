@@ -1,7 +1,9 @@
 """Kalendarze dużych hal: tam gwiazdy pojawiają się czasem przed startem sprzedaży.
 
 - Tauron Arena Kraków: WordPress + The Events Calendar (publiczne REST API),
-- Spodek Katowice: lista wydarzeń na stronie (data + tytuł + link).
+- Spodek Katowice: lista wydarzeń na stronie (data + tytuł + link),
+- PGE Narodowy: kalendarz miesięczny (calendar-graphic.php), 18 miesięcy do przodu,
+- Atlas Arena Łódź: lista wydarzeń (dzień.miesiąc bez roku; rok z kolejności).
 """
 import html
 import re
@@ -72,9 +74,59 @@ def spodek() -> list[dict]:
     return out
 
 
+PGE = "https://www.pgenarodowy.pl"
+_PGE_BLOCK = re.compile(
+    r'modal-body-event.*?href="(/strony-dodatkowe/wydarzenia/[^"]+)".*?calendar-modal--title">(.*?)</span>'
+    r'.*?calendar-modal--date">(.*?)</span>(?:\s*<span class="calendar-modal--time">(.*?)</span>)?', re.S)
+
+
+def pge() -> list[dict]:
+    today = date.today()
+    out, seen = [], set()
+    for i in range(18):
+        m0 = today.month - 1 + i
+        y, m = today.year + m0 // 12, m0 % 12 + 1
+        page = get(f"{PGE}/calendar/calendar-graphic.php?month={m}&year={y}", min_interval=0.5)
+        for href, title, d, t in _PGE_BLOCK.findall(page):
+            title = _text(title)
+            dm = _DATE.search(_text(d))
+            if not (title and dm):
+                continue
+            day, month, year = dm.groups()
+            iso = f"{year}-{MONTHS[month]:02d}-{int(day):02d}"
+            tm = re.search(r"(\d{1,2}):(\d\d)", t or "")
+            if tm:
+                iso += f"T{int(tm.group(1)):02d}:{tm.group(2)}"
+            key = (href, iso[:10])
+            if key in seen:  # wydarzenie wielodniowe / wersja mobilna – raz na dzień
+                continue
+            seen.add(key)
+            out.append(_ev("PGE Narodowy", title, iso, PGE + href, "PGE Narodowy", "Warszawa"))
+    return out
+
+
+ATLAS = "https://atlasarena.pl/wydarzenia/"
+_ATLAS_ITEM = re.compile(
+    r'eventsmain__center__item__title__day">\s*(\d{1,2})\.(\d{1,2})\s*</span>\s*<a href="([^"]+)">\s*<h3>(.*?)</h3>', re.S)
+
+
+def atlas() -> list[dict]:
+    page = get(ATLAS)
+    today = date.today()
+    year, last = today.year, (today.month, 0)
+    out = []
+    for d, m, url, title in _ATLAS_ITEM.findall(page):
+        md = (int(m), int(d))
+        if md < last and (last[0] - md[0]) > 2:  # lista jest chronologiczna: spadek miesiąca = nowy rok
+            year += 1
+        last = md
+        out.append(_ev("Atlas Arena", _text(title), f"{year}-{md[0]:02d}-{md[1]:02d}", url, "Atlas Arena", "Łódź"))
+    return out
+
+
 def fetch() -> list[dict]:
     out, errors = [], []
-    for fn in (tauron, spodek):
+    for fn in (tauron, spodek, pge, atlas):
         try:
             got = fn()
             print(f"  {fn.__name__}: {len(got)}", flush=True)

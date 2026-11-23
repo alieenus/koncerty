@@ -7,7 +7,7 @@ Strona z koncertami zagranicznych artystów w Polsce (kto, kiedy, gdzie). Skan c
    - **eBilet**: ich JSON API, wszystkie tytuły muzyczne w jednym zapytaniu,
    - **Biletyna**: mapa strony z adresami koncertów; strony wydarzeń pobierane tylko dla gwiazd z zagranicy i koncertów przy świecach,
    - **Going.**: wyłączone (`"going": true` w config.json włącza), bo strona ładuje dane w przeglądarce,
-   - **Hale**: Tauron Arena Kraków (REST API kalendarza) i Spodek (lista wydarzeń),
+   - **Hale**: Tauron Arena Kraków (REST API kalendarza), Spodek, PGE Narodowy (kalendarz miesięczny) i Atlas Arena (listy wydarzeń),
    - **Ticketmaster PL** (razem z Live Nation): oficjalne Discovery API, potrzebny darmowy klucz `TM_API_KEY`.
 2. Odrzuca tribute, covery i wersje symfoniczne. Koncerty przy świecach trafiają na stronę jako osobny gatunek „przy świecach” (wyłączysz je przez `"candlelight": false`).
 3. Dla każdego artysty sprawdza kraj w **MusicBrainz** i liczbę fanów na **Deezerze**. Zostają tylko artyści spoza Polski, którzy mają co najmniej `min_fans` fanów. Wyniki są zapisywane w pamięci podręcznej na 30 dni.
