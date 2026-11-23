@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import enrich, filters, notify
-from .sources import biletyna, ebilet, going, ticketmaster
+from .sources import biletyna, ebilet, going, ticketmaster, venues
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("KONCERTY_DATA", ROOT / "data"))
@@ -85,7 +85,7 @@ def run() -> int:
 
     raw: list[dict] = []
     sources = [("eBilet", ebilet.fetch), ("Biletyna", lambda: biletyna.fetch(biletyna_cache, wanted)),
-               ("Ticketmaster", ticketmaster.fetch)]
+               ("Ticketmaster", ticketmaster.fetch), ("Hale", venues.fetch)]
     if cfg.get("going", False):  # wyłączone: strony Going. renderują dane w przeglądarce (do poprawy)
         sources.insert(1, ("Going.", lambda: going.fetch(going_cache)))
     for name, fn in sources:

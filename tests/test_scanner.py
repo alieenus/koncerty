@@ -113,3 +113,14 @@ class T(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Venues(unittest.TestCase):
+    def test_tauron(self):
+        from scanner.sources import venues
+        data = {"total_pages": 1, "events": [{"title": "Metallica &#8211; M72", "start_date": "2099-05-01 20:00:00",
+                                              "url": "https://x/event/m", "image": {"url": "https://x/i.jpg"}}]}
+        with mock.patch.object(venues, "get_json", return_value=data):
+            ev = venues.tauron()
+        self.assertEqual((ev[0]["title"], ev[0]["date"], ev[0]["venue_city"]), ("Metallica – M72", "2099-05-01T20:00", "Kraków"))
+        self.assertEqual(enrich.guess_artists(ev[0]), ["Metallica"])
