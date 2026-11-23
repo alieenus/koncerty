@@ -141,6 +141,7 @@ def run() -> int:
             break  # pierwszy rozpoznany wykonawca = główna gwiazda
         if checked % 50 == 0:
             save(DATA / "artists.json", artists_cache)  # postęp przetrwa przerwanie skanu
+    print(f"Sprawdzono {checked}/{len(raw)} wydarzeń (koniec)", flush=True)
     save(DATA / "artists.json", artists_cache)
 
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
