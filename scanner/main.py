@@ -137,6 +137,9 @@ def run() -> int:
                 if filters.is_star(a, filters.classify(a, cfg), cfg) or enrich.norm(name) in cfg["watch_norm"]:
                     stars.append(a.get("name", name))
             add_festival(merged, ev, stars)
+            fm = next(m for m in merged.values() if m.get("festival") and m["links"][-1]["url"] == ev["url"])
+            fm.setdefault("lineup_all", [])
+            fm["lineup_all"] += [a for a in ev["artists"] if a not in fm["lineup_all"]]
             continue
         if filters.is_fake(ev):
             continue
