@@ -37,6 +37,7 @@ def save(path: Path, obj):
 def load_config() -> dict:
     cfg = load(ROOT / "config.json", {})
     cfg.setdefault("min_fans", 100000)
+    cfg.setdefault("candlelight", True)
     cfg.setdefault("min_fans_unknown_country", 500000)
     cfg["force_foreign"] = {x.lower() for x in cfg.get("force_foreign", [])}
     cfg["force_polish"] = {x.lower() for x in cfg.get("force_polish", [])}
@@ -48,6 +49,20 @@ def load_config() -> dict:
 def event_key(artist: str, ev: dict) -> str:
     city = enrich.norm(ev.get("venue_city") or (ev["cities"][0] if ev["cities"] else ""))
     return f"{enrich.norm(artist)}|{ev['date'][:10]}|{city}"
+
+
+def add_candle(merged: dict, ev: dict):
+    """Koncert przy świecach: bez sprawdzania artysty, jako osobny gatunek."""
+    city = ev.get("venue_city") or (ev["cities"][0] if ev["cities"] else "")
+    k = f"swiece:{enrich.norm(ev['title'])}|{ev['date'][:10]}|{enrich.norm(city)}"
+    m = merged.setdefault(k, {
+        "id": k, "artist": ev["title"], "country": None, "fans": 0, "picture": ev.get("image"),
+        "tags": [], "title": ev["title"], "date": ev["date"], "date_to": ev.get("date_to"),
+        "cities": ev["cities"], "venue": ev.get("venue"), "venue_city": ev.get("venue_city"),
+        "genre": "przy świecach", "candle": True, "links": [], "sold_out": ev["sold_out"],
+    })
+    if all(l["url"] != ev["url"] for l in m["links"]):
+        m["links"].append({"source": ev["source"], "url": ev["url"]})
 
 
 def run() -> int:
@@ -74,7 +89,12 @@ def run() -> int:
     today = datetime.now().strftime("%Y-%m-%d")
     merged: dict[str, dict] = {}
     for ev in raw:
-        if ev["date"][:10] < today or filters.is_fake(ev):
+        if ev["date"][:10] < today:
+            continue
+        if cfg["candlelight"] and filters.is_candle(ev):
+            add_candle(merged, ev)
+            continue
+        if filters.is_fake(ev):
             continue
         for name in enrich.guess_artists(ev):
             a = enrich.lookup(name, artists_cache, cfg["musicbrainz_user_agent"])

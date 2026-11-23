@@ -46,6 +46,10 @@ class T(unittest.TestCase):
         self.assertTrue(filters.is_fake({"title": "Tribute to Queen"}))
         self.assertTrue(filters.is_fake({"title": "Candlelight: Coldplay"}))
         self.assertFalse(filters.is_fake({"title": "Coldplay Music of the Spheres"}))
+        for t in ["Koncert przy świecach: Tribute to Metallica", "Queen Classic Concert By Candle Glow",
+                  "Koncert wśród kwiatów i świec: Tribute to Backstreet Boys & Spice Girls", "Candlelight: Coldplay"]:
+            self.assertTrue(filters.is_candle({"title": t}), t)
+        self.assertFalse(filters.is_candle({"title": "Tribute to Queen"}))
 
     def test_pipeline(self):
         with tempfile.TemporaryDirectory() as d:
@@ -63,8 +67,12 @@ class T(unittest.TestCase):
                 os.environ.pop("TM_API_KEY", None)
                 self.assertEqual(main.run(), 0)
                 res = json.loads(out.read_text())
-                self.assertEqual(res["count"], 1)  # tylko BSB: tribute i Guzior odpadają
-                c = res["concerts"][0]
+                # BSB + koncert przy świecach; Guzior (PL) odpada
+                self.assertEqual(res["count"], 2)
+                candle = [c for c in res["concerts"] if c.get("candle")]
+                self.assertEqual(len(candle), 1)
+                self.assertEqual(candle[0]["genre"], "przy świecach")
+                c = [c for c in res["concerts"] if not c.get("candle")][0]
                 self.assertEqual(c["artist"], "Backstreet Boys")
                 self.assertEqual({l["source"] for l in c["links"]}, {"eBilet", "Going."})  # deduplikacja
                 self.assertEqual(c["venue"], "PGE Narodowy")

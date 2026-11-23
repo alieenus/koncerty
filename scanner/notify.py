@@ -31,6 +31,8 @@ def send_new(new: list[dict], cfg: dict):
     watch = {norm(a) for a in cfg["watchlist"]}
     notify_all = cfg.get("notify_all_new", False)
     for m in new:
+        if m.get("candle") and not cfg.get("notify_candlelight", False):
+            continue
         if notify_all or norm(m["artist"]) in watch:
             try:
                 _send(token, chat, _fmt(m))

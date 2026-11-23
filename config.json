@@ -1,8 +1,12 @@
 {
   "min_fans": 100000,
   "min_fans_unknown_country": 500000,
-  "watchlist": ["Backstreet Boys"],
+  "candlelight": true,
+  "watchlist": [
+    "Backstreet Boys"
+  ],
   "notify_all_new": false,
+  "notify_candlelight": false,
   "force_foreign": [],
   "force_polish": [],
   "musicbrainz_user_agent": "koncerty-scanner/1.0 (prywatny projekt)"

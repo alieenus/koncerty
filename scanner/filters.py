@@ -12,6 +12,14 @@ FAKE = re.compile(
 )
 
 
+# Koncerty przy świecach (Candlelight, „by Candle Glow” itp.) – osobna kategoria na stronie.
+CANDLE = re.compile(r"candle|przy świecach|wśród (?:kwiatów i )?świec|w blasku (?:tysięcy )?świec", re.I)
+
+
+def is_candle(ev: dict) -> bool:
+    return bool(CANDLE.search(ev["title"]))
+
+
 def is_fake(ev: dict) -> bool:
     return bool(FAKE.search(ev["title"]))
 
