@@ -88,6 +88,7 @@ def run() -> int:
 
     today = datetime.now().strftime("%Y-%m-%d")
     merged: dict[str, dict] = {}
+    checked = 0
     for ev in raw:
         if ev["date"][:10] < today:
             continue
@@ -96,6 +97,9 @@ def run() -> int:
             continue
         if filters.is_fake(ev):
             continue
+        checked += 1
+        if checked % 50 == 0:
+            print(f"Sprawdzono {checked}/{len(raw)} wydarzeń, artystów w bazie: {len(artists_cache)}", flush=True)
         for name in enrich.guess_artists(ev):
             a = enrich.lookup(name, artists_cache, cfg["musicbrainz_user_agent"])
             kind = filters.classify(a, cfg)
@@ -119,6 +123,8 @@ def run() -> int:
             if m["genre"] in ("inne", "muzyka") and ev["genre"] not in ("inne", "muzyka"):
                 m["genre"] = ev["genre"]
             break  # pierwszy rozpoznany wykonawca = główna gwiazda
+        if checked % 50 == 0:
+            save(DATA / "artists.json", artists_cache)  # postęp przetrwa przerwanie skanu
     save(DATA / "artists.json", artists_cache)
 
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
