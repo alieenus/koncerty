@@ -39,8 +39,8 @@ def load_config() -> dict:
     cfg.setdefault("min_fans", 100000)
     cfg.setdefault("candlelight", True)
     cfg.setdefault("min_fans_unknown_country", 500000)
-    cfg["force_foreign"] = {x.lower() for x in cfg.get("force_foreign", [])}
-    cfg["force_polish"] = {x.lower() for x in cfg.get("force_polish", [])}
+    for k in ("force_foreign", "force_polish", "include_artists"):
+        cfg[k] = {enrich.norm(x) for x in cfg.get(k, [])}
     cfg["watchlist"] = cfg.get("watchlist", [])
     cfg.setdefault("musicbrainz_user_agent", "koncerty-scanner/1.0 (prywatny projekt)")
     return cfg

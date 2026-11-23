@@ -59,6 +59,15 @@ class T(unittest.TestCase):
             self.assertTrue(filters.is_candle({"title": t}), t)
         self.assertFalse(filters.is_candle({"title": "Tribute to Queen"}))
 
+    def test_include_polish_star(self):
+        cfg = main.load_config()
+        for name in ["Dawid Podsiadło", "Dawid Podsiadlo", "MROZU"]:
+            a = {"name": name, "country": "PL", "fans": 10}
+            kind = filters.classify(a, cfg)
+            self.assertTrue(filters.is_star(a, kind, cfg), name)
+        a = {"name": "Guzior", "country": "PL", "fans": 300000}
+        self.assertFalse(filters.is_star(a, filters.classify(a, cfg), cfg))
+
     def test_pipeline(self):
         with tempfile.TemporaryDirectory() as d:
             data, out = Path(d) / "data", Path(d) / "out.json"

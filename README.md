@@ -20,6 +20,7 @@ Strona z koncertami zagranicznych artystów w Polsce (kto, kiedy, gdzie). Skan c
 - `watchlist`: artyści, o których chcesz dostawać powiadomienia,
 - `notify_all_new`: `true` oznacza powiadomienia o każdym nowym koncercie,
 - `candlelight` / `notify_candlelight`: pokazywanie koncertów przy świecach i powiadamianie o nich,
+- `include_artists`: artyści pokazywani zawsze, niezależnie od kraju i popularności (np. polskie gwiazdy),
 - `force_foreign` / `force_polish`: ręczne poprawki, gdy automatyczne rozpoznanie się pomyli.
 
 ## Instalacja na VPS

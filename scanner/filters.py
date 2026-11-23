@@ -1,6 +1,8 @@
 """Reguły: co jest koncertem zagranicznej gwiazdy, a co nie."""
 import re
 
+from .enrich import norm
+
 # Tribute, covery, „muzyka X przy świecach” itp. – to nie jest prawdziwy artysta.
 FAKE = re.compile(
     r"tribute|cover|candlelight|przy świecach|wśród (?:kwiatów|świec)|symfonicznie|"
@@ -25,8 +27,10 @@ def is_fake(ev: dict) -> bool:
 
 
 def classify(artist: dict, cfg: dict) -> str:
-    """Zwraca 'foreign', 'polish' albo 'unknown'."""
-    key = artist.get("name", "").lower()
+    """Zwraca 'included', 'foreign', 'polish' albo 'unknown'."""
+    key = norm(artist.get("name", ""))
+    if key in cfg["include_artists"]:
+        return "included"
     if key in cfg["force_foreign"]:
         return "foreign"
     if key in cfg["force_polish"]:
@@ -40,6 +44,8 @@ def classify(artist: dict, cfg: dict) -> str:
 
 
 def is_star(artist: dict, kind: str, cfg: dict) -> bool:
+    if kind == "included":  # artysta dopisany ręcznie (np. polska gwiazda) – zawsze
+        return True
     fans = artist.get("fans", 0)
     if kind == "foreign":
         return fans >= cfg["min_fans"]

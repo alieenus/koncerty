@@ -7,6 +7,10 @@
   ],
   "notify_all_new": false,
   "notify_candlelight": false,
+  "include_artists": [
+    "Mrozu",
+    "Dawid Podsiadło"
+  ],
   "force_foreign": [],
   "force_polish": [],
   "musicbrainz_user_agent": "koncerty-scanner/1.0 (prywatny projekt)"
