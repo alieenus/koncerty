@@ -121,7 +121,7 @@ def run() -> int:
     status = {}
 
     biletyna_cache = load(DATA / "biletyna_cache.json", {})
-    biletserwis_cache = load(DATA / "biletserwis_cache.json", {})
+    biletserwis_cache = load(DATA / "biletserwis_cache_v2.json", {})
 
     def wanted(name: str) -> bool:
         """Czy warto pobierać szczegóły: gwiazda z zagranicy albo koncert przy świecach."""
@@ -150,7 +150,7 @@ def run() -> int:
         print(f"{name}: {status[name]}", flush=True)
     save(DATA / "going_cache.json", going_cache)
     save(DATA / "biletyna_cache.json", biletyna_cache)
-    save(DATA / "biletserwis_cache.json", biletserwis_cache)
+    save(DATA / "biletserwis_cache_v2.json", biletserwis_cache)
     save(DATA / "artists.json", artists_cache)
 
     today = datetime.now().strftime("%Y-%m-%d")

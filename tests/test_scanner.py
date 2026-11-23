@@ -161,10 +161,14 @@ class BiletSerwis(unittest.TestCase):
         from scanner.sources import biletserwis
         page = """<li><div class="fcell"><p class="first-line">30 maja 2027</p><p class="last-line">niedziela 20:00</p></div>
 <div class="scell"><div class="event-information-wrapper"><div><p class="event-title">Andrea Bocelli</p>
-<p class="event-location"> Superauto.pl Stadion Śląski, Chorzów</p></div></div></div></li>"""
+<p class="event-location"> Superauto.pl Stadion Śląski, Chorzów</p></div></div></div></li>
+<li><div class="fcell"><p class="first-line text-xl font-bold">03 czerwca 2027</p><p class="last-line text-sm">czwartek 20:00</p></div>
+<div class="scell"><p class="event-title font-bold">Scorpions</p><p class="event-location text-sm">TAURON Arena Kraków</p></div></li>"""
         e = biletserwis.parse_page(page, "https://biletserwis.pl/e/andrea-bocelli/")[0]
         self.assertEqual((e["title"], e["date"], e["venue"], e["venue_city"]),
                          ("Andrea Bocelli", "2027-05-30T20:00", "Superauto.pl Stadion Śląski", "Chorzów"))
+        e2 = biletserwis.parse_page(page, "u")[1]
+        self.assertEqual((e2["title"], e2["date"], e2["venue_city"]), ("Scorpions", "2027-06-03T20:00", "Kraków"))
 
 
 class Venues(unittest.TestCase):

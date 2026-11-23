@@ -18,7 +18,6 @@ DEFAULT_SITES = [
     {"name": "OFF Festival", "url": "https://off-festival.pl/line-up/", "city": "Katowice"},
     {"name": "Audioriver", "url": "https://audioriver.pl/", "city": "Płock"},
     {"name": "Mystic Festival", "url": "https://mysticfestival.pl/", "city": "Gdańsk"},
-    {"name": "Kraków Live Festival", "url": "https://krakowlivefestival.pl/", "city": "Kraków"},
     {"name": "Tauron Nowa Muzyka", "url": "https://nowamuzyka.pl/", "city": "Katowice"},
 ]
 

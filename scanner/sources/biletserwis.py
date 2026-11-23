@@ -18,8 +18,8 @@ MONTHS = {m: i for i, m in enumerate(
     ["stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia",
      "września", "października", "listopada", "grudnia"], 1)}
 _ROW = re.compile(
-    r'first-line">\s*(\d{1,2}) (\w+) (20\d\d)\s*</p>\s*<p class="last-line">[^<]*?(\d{1,2}:\d\d)?\s*</p>'
-    r'.*?event-title">(.*?)</p>\s*<p class="event-location">(.*?)</p>', re.S)
+    r'first-line[^>]*>\s*(\d{1,2}) (\w+) (20\d\d)\s*</p>\s*<p[^>]*last-line[^>]*>[^<]*?(\d{1,2}:\d\d)?\s*</p>'
+    r'.*?event-title[^>]*>(.*?)</p>\s*<p[^>]*event-location[^>]*>(.*?)</p>', re.S)
 
 
 def _t(s: str) -> str:
@@ -33,7 +33,10 @@ def parse_page(page: str, url: str) -> list[dict]:
             continue
         d = f"{year}-{MONTHS[month]:02d}-{int(day):02d}" + (f"T{int(hm.split(':')[0]):02d}:{hm.split(':')[1]}" if hm else "")
         loc = _t(loc)
-        venue, _, city = loc.rpartition(",")
+        if "," in loc:
+            venue, _, city = loc.rpartition(",")
+        else:  # np. „TAURON Arena Kraków” – miasto to ostatnie słowo
+            venue, city = loc, loc.split()[-1] if loc else ""
         city = city.strip() or None
         out.append({"source": "BiletSerwis", "title": _t(title), "artists": [], "date": d, "date_to": None,
                     "cities": [city] if city else [], "venue": venue.strip() or loc, "venue_city": city,
@@ -71,7 +74,9 @@ def fetch(cache: dict, wanted: Callable[[str], bool]) -> list[dict]:
                 evs = parse_page(get(url, min_interval=1.0), url)
             except RuntimeError:
                 continue
-            c = cache[url] = {"t": now, "events": evs}
+            c = {"t": now, "events": evs}
+            if evs:  # pustego wyniku nie zapamiętujemy – może to być chwilowy problem strony
+                cache[url] = c
         out.extend(c["events"])
     for url in list(cache):
         if url not in keep:
