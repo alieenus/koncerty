@@ -41,5 +41,6 @@ def fetch() -> list[dict]:
             "url": t.get("linkTo") or f"https://www.ebilet.pl/{t['category']}/{t['subcategory']}/{t['slug']}",
             "image": t.get("imagePortrait") or t.get("imageLandscape"),
             "sold_out": bool(t.get("soldOut")),
+            "onsale": (t.get("sellDateFrom") or "")[:16] or None,
         })
     return out

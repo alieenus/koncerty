@@ -4,6 +4,7 @@ Działa dopiero po ustawieniu zmiennych TELEGRAM_BOT_TOKEN i TELEGRAM_CHAT_ID
 (w pliku /etc/koncerty.env na serwerze). Bez nich nic nie wysyła.
 """
 import json
+from datetime import datetime
 import os
 import urllib.request
 
@@ -22,7 +23,12 @@ def _fmt(m: dict) -> str:
     where = ", ".join(filter(None, [m.get("venue"), m.get("venue_city") or ", ".join(m["cities"])]))
     links = "\n".join(f'<a href="{l["url"]}">Bilety: {l["source"]}</a>' for l in m["links"])
     fest = f"\n🎪 {m['festival_name']}" if m.get("festival_name") else ""
-    return f"🎤 <b>{m['artist']}</b>{fest}\n📅 {m['date'].replace('T', ' ')}\n📍 {where}\n{links}"
+    sale, now = "", datetime.now().strftime("%Y-%m-%dT%H:%M")
+    if (m.get("presale") or "") > now:
+        sale += f"\n⏰ Przedsprzedaż: {m['presale'].replace('T', ' ')}"
+    if (m.get("onsale") or "") > now:
+        sale += f"\n🎟 Sprzedaż: {m['onsale'].replace('T', ' ')}"
+    return f"🎤 <b>{m['artist']}</b>{fest}\n📅 {m['date'].replace('T', ' ')}\n📍 {where}{sale}\n{links}"
 
 
 def send_new(new: list[dict], cfg: dict):

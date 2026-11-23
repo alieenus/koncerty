@@ -9,11 +9,12 @@ Strona z koncertami zagranicznych artystów w Polsce (kto, kiedy, gdzie). Skan c
    - **Going.**: wyłączone (`"going": true` w config.json włącza), bo strona ładuje dane w przeglądarce,
    - **BiletSerwis**: lista z REST API WordPressa, terminy ze stron wydarzeń (tylko gwiazdy),
    - **Hale**: Tauron Arena Kraków (REST API kalendarza), Spodek, PGE Narodowy (kalendarz miesięczny) i Atlas Arena (listy wydarzeń),
+   - **Organizatorzy** (zapowiedzi, często przed startem sprzedaży): Live Nation Polska (JSON wyszukiwarki, z datą ogłoszenia i datami przedsprzedaży), Alter Art, Knock Out Productions, Prestige MJM i Good Taste (daty i miasta czytane z tekstu zapowiedzi, `scanner/announce.py`),
    - **Ticketmaster PL** (razem z Live Nation): oficjalne Discovery API, potrzebny darmowy klucz `TM_API_KEY`.
 2. Odrzuca tribute, covery i wersje symfoniczne. Koncerty przy świecach trafiają na stronę jako osobny gatunek „przy świecach” (wyłączysz je przez `"candlelight": false`).
 3. Dla każdego artysty sprawdza kraj w **MusicBrainz** i liczbę fanów na **Deezerze**. Zostają tylko artyści spoza Polski, którzy mają co najmniej `min_fans` fanów. Wyniki są zapisywane w pamięci podręcznej na 30 dni.
 4. Łączy te same koncerty z różnych serwisów (artysta + dzień + miasto) i zapisuje `concerts.json`.
-5. `web/index.html` wyświetla listę z wyszukiwarką i filtrami gatunku, miasta oraz „tylko nowe”.
+5. `web/index.html` wyświetla listę z wyszukiwarką i filtrami gatunku, miasta, serwisu, „tylko nowe” i „przed startem sprzedaży”. Przy koncercie widać datę przedsprzedaży i sprzedaży, a znaczek „zapowiedź” oznacza koncert ogłoszony przez organizatora, którego nie ma jeszcze w serwisach biletowych.
 6. Nowy koncert artysty z `watchlist` (plik `config.json`) wysyła wiadomość na Telegram.
 
 ## Ustawienia (`config.json`)

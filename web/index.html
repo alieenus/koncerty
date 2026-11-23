@@ -34,6 +34,8 @@ h2.month{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(
 .tag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--muted)}
 .tag.new{background:var(--new);color:#fff}
 .tag.sold{background:var(--muted);color:var(--bg)}
+.tag.ann{background:#e67700;color:#fff}
+.sale{font-size:13px;margin-top:4px;font-weight:600;color:#e67700}
 .links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .links a{font-size:13px;font-weight:600;text-decoration:none;padding:5px 10px;border-radius:8px;background:var(--accent);color:var(--accent-ink)}
 .empty{color:var(--muted);padding:40px 0;text-align:center}
@@ -51,6 +53,7 @@ footer{max-width:1100px;margin:0 auto;padding:0 16px 32px;color:var(--muted);fon
   <select id="city"><option value="">Wszystkie miasta</option></select>
   <select id="source"><option value="">Wszystkie serwisy</option></select>
   <label class="tg"><input type="checkbox" id="onlyNew"> tylko nowe (7 dni)</label>
+  <label class="tg"><input type="checkbox" id="onlySoon"> przed startem sprzedaży</label>
 </div></div>
 <main id="list"></main>
 <footer id="foot"></footer>
@@ -66,17 +69,28 @@ const fmtDate = d => {
 const WEEK = 7 * 864e5;
 let DATA = [];
 
+const ORGS = ['Live Nation','Alter Art','Knock Out','Prestige MJM','Good Taste'];
+const fmtSale = d => new Date(d).toLocaleDateString('pl-PL', {weekday:'short', day:'numeric', month:'short'}) + (d.length > 10 ? ', ' + d.slice(11,16) : '');
+function saleInfo(c, now){
+  const out = [];
+  if (c.presale && new Date(c.presale) > now) out.push('przedsprzedaż ' + fmtSale(c.presale));
+  if (c.onsale && new Date(c.onsale) > now) out.push('sprzedaż ' + fmtSale(c.onsale));
+  return out;
+}
+const isAnnounce = c => c.links.length && c.links.every(l => ORGS.includes(l.source));
+
 function cityOf(c){ return c.venue_city || (c.cities[0] || ''); }
 
 function render(){
   const q = $('#q').value.trim().toLowerCase();
-  const g = $('#genre').value, city = $('#city').value, src = $('#source').value, onlyNew = $('#onlyNew').checked;
+  const g = $('#genre').value, city = $('#city').value, src = $('#source').value, onlyNew = $('#onlyNew').checked, onlySoon = $('#onlySoon').checked;
   const now = Date.now();
   const rows = DATA.filter(c => {
     if (g && c.genre !== g) return false;
     if (city && !c.cities.concat(c.venue_city || []).includes(city)) return false;
     if (src && !c.links.some(l => l.source === src)) return false;
     if (onlyNew && now - new Date(c.first_seen) > WEEK) return false;
+    if (onlySoon && !saleInfo(c, now).length) return false;
     if (q && ![c.artist, c.title, c.venue, ...c.cities, ...(c.lineup || []), ...(c.lineup_all || [])].join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
@@ -86,6 +100,7 @@ function render(){
     const m = new Date(c.date).toLocaleDateString('pl-PL', {month:'long', year:'numeric'});
     if (m !== month){ if (month) html += '</div>'; html += `<h2 class="month">${esc(m)}</h2><div class="grid">`; month = m; }
     const isNew = now - new Date(c.first_seen) < WEEK;
+    const sale = saleInfo(c, now);
     const where = [c.venue, cityOf(c)].filter(Boolean).join(', ');
     const more = c.cities.length > 1 ? ` <span title="${esc(c.cities.join(', '))}">(+${c.cities.length - 1} miasta)</span>` : '';
     html += `<article class="card">
@@ -96,8 +111,10 @@ function render(){
         <div class="where">📍 ${esc(where)}${more}</div>
         ${c.title && c.title.toLowerCase() !== c.artist.toLowerCase() ? `<div class="title">${esc(c.title)}</div>` : ''}
         ${c.lineup && c.lineup.length ? `<div class="lineup">⭐ ${c.lineup.slice(0,12).map(esc).join(' · ')}${c.lineup.length > 12 ? ` <span>+${c.lineup.length - 12}</span>` : ''}</div>` : ''}
+        ${sale.length ? `<div class="sale">⏰ Bilety: ${esc(sale.join(' · '))}</div>` : ''}
         <div class="tags">
           ${isNew ? '<span class="tag new">NOWE</span>' : ''}
+          ${isAnnounce(c) ? '<span class="tag ann" title="Ogłoszone przez organizatora, jeszcze nie ma w serwisach biletowych">zapowiedź</span>' : ''}
           ${c.sold_out ? '<span class="tag sold">wyprzedane</span>' : ''}
           <span class="tag">${esc(c.genre)}</span>
         </div>
@@ -124,7 +141,7 @@ fetch('data/concerts.json', {cache:'no-cache'}).then(r => r.json()).then(d => {
   render();
 }).catch(() => { $('#meta').textContent = 'Nie udało się wczytać danych.'; });
 
-for (const id of ['q','genre','city','source','onlyNew']) $('#'+id).addEventListener('input', () => {
+for (const id of ['q','genre','city','source','onlyNew','onlySoon']) $('#'+id).addEventListener('input', () => {
   try { localStorage.setItem('koncerty-filtry', JSON.stringify({q:$('#q').value, genre:$('#genre').value, city:$('#city').value, source:$('#source').value})); } catch {}
   render();
 });

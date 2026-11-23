@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import enrich, filters, notify
-from .sources import biletserwis, biletyna, ebilet, festivals, going, ticketmaster, venues
+from .sources import biletserwis, biletyna, ebilet, festivals, going, organizers, ticketmaster, venues
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("KONCERTY_DATA", ROOT / "data"))
@@ -52,6 +52,17 @@ def load_config() -> dict:
 def event_key(artist: str, ev: dict) -> str:
     city = enrich.norm(ev.get("venue_city") or (ev["cities"][0] if ev["cities"] else ""))
     return f"{enrich.norm(artist)}|{ev['date'][:10]}|{city}"
+
+
+SALE_FIELDS = ("onsale", "presale", "announced")
+
+
+def add_sale_info(m: dict, ev: dict):
+    """Najwcześniejsza znana data ogłoszenia / przedsprzedaży / sprzedaży ze wszystkich źródeł."""
+    for f in SALE_FIELDS:
+        v = ev.get(f)
+        if v and (not m.get(f) or v < m[f]):
+            m[f] = v
 
 
 def add_candle(merged: dict, ev: dict):
@@ -122,6 +133,7 @@ def run() -> int:
 
     biletyna_cache = load(DATA / "biletyna_cache.json", {})
     biletserwis_cache = load(DATA / "biletserwis_cache_v2.json", {})
+    goodtaste_cache = load(DATA / "goodtaste_cache.json", {})
 
     def wanted(name: str) -> bool:
         """Czy warto pobierać szczegóły: gwiazda z zagranicy albo koncert przy świecach."""
@@ -133,7 +145,8 @@ def run() -> int:
         return filters.is_star(a, filters.classify(a, cfg), cfg)
 
     raw: list[dict] = []
-    sources = [("eBilet", ebilet.fetch), ("Biletyna", lambda: biletyna.fetch(biletyna_cache, wanted)),
+    sources = [("eBilet", ebilet.fetch), ("Organizatorzy", lambda: organizers.fetch(goodtaste_cache)),
+               ("Biletyna", lambda: biletyna.fetch(biletyna_cache, wanted)),
                ("BiletSerwis", lambda: biletserwis.fetch(biletserwis_cache, wanted)),
                ("Ticketmaster", ticketmaster.fetch), ("Hale", venues.fetch)]
     if cfg.get("going", False):  # wyłączone: strony Going. renderują dane w przeglądarce (do poprawy)
@@ -151,6 +164,7 @@ def run() -> int:
     save(DATA / "going_cache.json", going_cache)
     save(DATA / "biletyna_cache.json", biletyna_cache)
     save(DATA / "biletserwis_cache_v2.json", biletserwis_cache)
+    save(DATA / "goodtaste_cache.json", goodtaste_cache)
     save(DATA / "artists.json", artists_cache)
 
     today = datetime.now().strftime("%Y-%m-%d")
@@ -198,6 +212,7 @@ def run() -> int:
                 m["links"].append({"source": ev["source"], "url": ev["url"]})
             if not m.get("venue") and ev.get("venue"):
                 m["venue"] = ev["venue"]
+            add_sale_info(m, ev)
             if m["genre"] in ("inne", "muzyka") and ev["genre"] not in ("inne", "muzyka"):
                 m["genre"] = ev["genre"]
             break  # pierwszy rozpoznany wykonawca = główna gwiazda

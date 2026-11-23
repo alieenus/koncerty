@@ -84,6 +84,7 @@ class T(unittest.TestCase):
             with mock.patch.object(main, "DATA", data), mock.patch.object(main, "OUT", out), \
                  mock.patch.object(main, "load_config", cfg_on), \
                  mock.patch.object(main.venues, "fetch", return_value=[]), \
+                 mock.patch.object(main.organizers, "fetch", return_value=[]), \
                  mock.patch.object(main.biletserwis, "fetch", return_value=[]), \
                  mock.patch.object(main.festivals, "fetch", return_value=[]), \
                  mock.patch.object(ebilet, "get_json", return_value=EBILET), \
@@ -136,6 +137,7 @@ class Festivals(unittest.TestCase):
                  mock.patch.object(ebilet, "fetch", return_value=[ev]), \
                  mock.patch.object(biletyna, "get", return_value="<urlset></urlset>"), \
                  mock.patch.object(main.venues, "fetch", return_value=[]), \
+                 mock.patch.object(main.organizers, "fetch", return_value=[]), \
                  mock.patch.object(main.biletserwis, "fetch", return_value=[]), \
                  mock.patch.object(main.festivals, "fetch", return_value=[{"name": "Open'er Festival", "url": "https://opener.pl/",
                      "city": "Gdynia", "date": "2099-07-01", "candidates": ["Kendrick Lamar", "BILETY"]}]):
@@ -180,3 +182,49 @@ class Venues(unittest.TestCase):
             ev = venues.tauron()
         self.assertEqual((ev[0]["title"], ev[0]["date"], ev[0]["venue_city"]), ("Metallica – M72", "2099-05-01T20:00", "Kraków"))
         self.assertEqual(enrich.guess_artists(ev[0]), ["Metallica"])
+
+
+class Organizers(unittest.TestCase):
+    def test_announce_text(self):
+        from datetime import date
+        from scanner import announce
+        t = ("W naszym kraju artysta zaśpiewa 10 marca – po raz pierwszy w Hali Stulecia we Wrocławiu. "
+             "Nowy album ukaże się 12 września. Przedsprzedaż biletów rozpocznie się 7 września o godzinie 10:00. "
+             "Sprzedaż ogólna: 9 września – godzina 10:00 na www.biletserwis.pl")
+        r = announce.parse(t, date(2026, 9, 3))
+        self.assertEqual(r["dates"], [("2027-03-10", "Wrocław")])
+        self.assertEqual((r["presale"], r["onsale"]), ("2026-09-07T10:00", "2026-09-09T10:00"))
+
+    def test_livenation(self):
+        from scanner.sources import organizers
+        doc = {"id": "1", "name": "Eric Clapton", "eventDate": "2099-05-12T00:00:00Z", "showTime": "",
+               "announceDateUtc": "2099-01-16T08:00:00Z", "url": "/event/eric-clapton-lodz-tickets-edp1",
+               "genres": [{"key": "rock"}], "venue": {"name": "Atlas Arena", "city": "Lódz"},
+               "lineup": [{"name": "Eric Clapton", "type": "headline"}],
+               "tickets": [{"type": "Sprzedaż*", "typeId": 2, "validFromUtc": "2099-01-20T11:00:00Z"},
+                           {"type": "Ticketmaster Przedsprzedaż", "typeId": 389, "validFromUtc": "2099-01-19T09:00:00Z"}]}
+        comedy = dict(doc, id="2", name="Stand-up", genres=[{"key": "comedy"}])
+        with mock.patch.object(organizers, "get_json", return_value={"total": 2, "documents": [doc, comedy]}):
+            ev = organizers.livenation()
+        self.assertEqual(len(ev), 1)
+        e = ev[0]
+        self.assertEqual((e["artists"], e["date"], e["venue_city"], e["genre"]), (["Eric Clapton"], "2099-05-12", "Łódź", "rock"))
+        self.assertEqual((e["onsale"], e["presale"]), ("2099-01-20T12:00", "2099-01-19T10:00"))
+
+    def test_alterart_knockout(self):
+        from scanner.sources import organizers
+        alter = ('<article class="event event--default"><div class="header"><time class="solid-date md-up">'
+                 '<span>2</span><span>1</span><span>.</span><span>0</span><span>1</span><span>.</span><span>2</span><span>7</span>'
+                 '</time> <span class="location md-up t-subtitle"> Atlas Arena <strong>Łódź</strong></span> '
+                 '<h3 class="title"><a href="/wydarzenia/nothing-but-thieves-2/" class="styled-focus">Nothing But Thieves</a></h3>'
+                 '</div>KUP BILET</article>')
+        with mock.patch.object(organizers, "get", return_value=alter):
+            e = organizers.alterart()[0]
+        self.assertEqual((e["title"], e["date"], e["venue"], e["venue_city"]),
+                         ("Nothing But Thieves", "2027-01-21", "Atlas Arena", "Łódź"))
+        ko = ('<a href="https://www.knockoutprod.net/pl/concert/detail/1061" class="concerts-list__item"><span>'
+              '<h5 class="concerts-list__name"> <strong> ELUVEITIE </strong> </h5>'
+              '<span class="concerts-list__place">Warszawa, 24.11.2099</span></span></a>')
+        with mock.patch.object(organizers, "get", side_effect=[ko, ko]):
+            e = organizers.knockout()[0]
+        self.assertEqual((e["title"], e["date"], e["venue_city"]), ("ELUVEITIE", "2099-11-24", "Warszawa"))
