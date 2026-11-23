@@ -1,0 +1,81 @@
+"""Testy bez sieci: python3 -m unittest discover tests"""
+import json
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from scanner import enrich, filters, main
+from scanner.sources import ebilet, going
+
+EBILET = {"titles": [
+    {"title": "Backstreet Boys Into The Millennium Tour", "dateFrom": "2099-06-01T20:00:00", "dateTo": None,
+     "place": "Warszawa", "category": "muzyka", "subcategory": "pop", "subcategoryName": "Pop", "slug": "bsb",
+     "artists": ["Backstreet Boys"], "nextEventPlace": {"customName": "PGE Narodowy", "city": "Warszawa"},
+     "organizer": {"name": "Live Nation"}, "soldOut": False},
+    {"title": "Koncert wśród kwiatów i świec: Tribute to Backstreet Boys & Spice Girls", "dateFrom": "2099-06-02T17:30:00",
+     "place": "Radom", "category": "muzyka", "subcategory": "pop", "slug": "tribute", "artists": [], "nextEventPlace": {}},
+    {"title": "Guzior Widmo Tour", "dateFrom": "2099-06-03T18:00:00", "place": "Gdańsk, Poznań", "category": "muzyka",
+     "subcategory": "hip-hop-rap", "slug": "guzior", "artists": ["Guzior"], "nextEventPlace": {"city": "Poznań"}},
+    {"title": "Voucher", "dateFrom": None, "category": "muzyka", "subcategory": "pop", "slug": "v"},
+]}
+
+GOING_SITEMAP = """<urlset><url><loc>https://goingapp.pl/wydarzenie/bsb</loc><lastmod>2026-11-01</lastmod></url>
+<url><loc>https://goingapp.pl/wydarzenie/vouchery</loc></url></urlset>"""
+GOING_PAGE = """<html><script type="application/ld+json">{"@context":"https://schema.org","@type":"MusicEvent",
+"name":"Backstreet Boys","startDate":"2099-06-01T20:00:00+02:00","url":"https://goingapp.pl/wydarzenie/bsb",
+"location":{"@type":"Place","name":"PGE Narodowy","address":{"addressLocality":"Warszawa"}},
+"performer":[{"@type":"MusicGroup","name":"Backstreet Boys"}]}</script></html>"""
+
+ARTISTS = {
+    "backstreet boys": {"name": "Backstreet Boys", "country": "US", "fans": 1152023, "checked": 9e12},
+    "guzior": {"name": "Guzior", "country": "PL", "fans": 300000, "checked": 9e12},
+}
+
+
+class T(unittest.TestCase):
+    def test_guess_artists(self):
+        g = lambda t: enrich.guess_artists({"title": t, "artists": []})
+        self.assertEqual(g("Metallica - M72 World Tour"), ["Metallica"])
+        self.assertEqual(g("Dua Lipa: Radical Optimism Tour 2027"), ["Dua Lipa"])
+        self.assertEqual(g("Koncert Imagine Dragons"), ["Imagine Dragons"])
+        self.assertEqual(g("Sting „3.0”"), ["Sting"])
+
+    def test_fake(self):
+        self.assertTrue(filters.is_fake({"title": "Tribute to Queen"}))
+        self.assertTrue(filters.is_fake({"title": "Candlelight: Coldplay"}))
+        self.assertFalse(filters.is_fake({"title": "Coldplay Music of the Spheres"}))
+
+    def test_pipeline(self):
+        with tempfile.TemporaryDirectory() as d:
+            data, out = Path(d) / "data", Path(d) / "out.json"
+            data.mkdir()
+            (data / "artists.json").write_text(json.dumps(ARTISTS))
+
+            def fake_get(url, **kw):
+                return GOING_SITEMAP if "sitemap" in url else GOING_PAGE
+
+            with mock.patch.object(main, "DATA", data), mock.patch.object(main, "OUT", out), \
+                 mock.patch.object(ebilet, "get_json", return_value=EBILET), \
+                 mock.patch.object(going, "get", side_effect=fake_get), \
+                 mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("TM_API_KEY", None)
+                self.assertEqual(main.run(), 0)
+                res = json.loads(out.read_text())
+                self.assertEqual(res["count"], 1)  # tylko BSB: tribute i Guzior odpadają
+                c = res["concerts"][0]
+                self.assertEqual(c["artist"], "Backstreet Boys")
+                self.assertEqual({l["source"] for l in c["links"]}, {"eBilet", "Going."})  # deduplikacja
+                self.assertEqual(c["venue"], "PGE Narodowy")
+
+                # drugi skan z nowym koncertem -> powiadomienie
+                EBILET["titles"].append({**EBILET["titles"][0], "dateFrom": "2099-06-02T20:00:00", "slug": "bsb2"})
+                with mock.patch.object(main.notify, "send_new") as sn:
+                    main.run()
+                    new = sn.call_args[0][0]
+                    self.assertEqual([n["date"] for n in new], ["2099-06-02T20:00"])
+
+
+if __name__ == "__main__":
+    unittest.main()

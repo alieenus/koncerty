@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Koncerty gwiazd w Polsce</title>
+<meta name="description" content="Koncerty zagranicznych gwiazd w Polsce: kto, kiedy, gdzie. Aktualizacja co 6 godzin.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1b1b1f;--muted:#6b6b75;--line:#e4e2dc;--accent:#d6336c;--accent-ink:#fff;--new:#2b8a3e;--chip:#efede8}
+@media (prefers-color-scheme:dark){:root{--bg:#121216;--card:#1c1c22;--ink:#ececf1;--muted:#9a9aa6;--line:#2c2c35;--accent:#f06595;--accent-ink:#121216;--new:#51cf66;--chip:#26262e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:28px 16px 8px;max-width:1100px;margin:0 auto}
+h1{margin:0 0 4px;font-size:clamp(24px,4vw,34px);letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:14px}
+.controls{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.controls .in{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=search],select{font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+input[type=search]{flex:1 1 220px;min-width:0}
+label.tg{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--muted);cursor:pointer}
+main{max-width:1100px;margin:0 auto;padding:8px 16px 48px}
+h2.month{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:28px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.card img{width:76px;height:76px;border-radius:10px;object-fit:cover;flex:none;background:var(--chip)}
+.body{min-width:0;flex:1}
+.artist{font-weight:700;font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.when{font-weight:600;margin-top:4px}
+.where,.title{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.title{font-style:italic}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--muted)}
+.tag.new{background:var(--new);color:#fff}
+.tag.sold{background:var(--muted);color:var(--bg)}
+.links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.links a{font-size:13px;font-weight:600;text-decoration:none;padding:5px 10px;border-radius:8px;background:var(--accent);color:var(--accent-ink)}
+.empty{color:var(--muted);padding:40px 0;text-align:center}
+footer{max-width:1100px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎤 Koncerty gwiazd w Polsce</h1>
+  <div class="sub" id="meta">Ładowanie…</div>
+</header>
+<div class="controls"><div class="in">
+  <input type="search" id="q" placeholder="Szukaj artysty, miasta, klubu…" autocomplete="off">
+  <select id="genre"><option value="">Wszystkie gatunki</option></select>
+  <select id="city"><option value="">Wszystkie miasta</option></select>
+  <label class="tg"><input type="checkbox" id="onlyNew"> tylko nowe (7 dni)</label>
+</div></div>
+<main id="list"></main>
+<footer id="foot"></footer>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const flag = cc => cc && cc.length === 2 ? String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1A5 + c.charCodeAt())) : '';
+const fmtDate = d => {
+  const dt = new Date(d);
+  const s = dt.toLocaleDateString('pl-PL', {weekday:'short', day:'numeric', month:'long', year:'numeric'});
+  return d.length > 10 && !d.endsWith('T00:00') ? s + ', ' + d.slice(11,16) : s;
+};
+const WEEK = 7 * 864e5;
+let DATA = [];
+
+function cityOf(c){ return c.venue_city || (c.cities[0] || ''); }
+
+function render(){
+  const q = $('#q').value.trim().toLowerCase();
+  const g = $('#genre').value, city = $('#city').value, onlyNew = $('#onlyNew').checked;
+  const now = Date.now();
+  const rows = DATA.filter(c => {
+    if (g && c.genre !== g) return false;
+    if (city && !c.cities.concat(c.venue_city || []).includes(city)) return false;
+    if (onlyNew && now - new Date(c.first_seen) > WEEK) return false;
+    if (q && ![c.artist, c.title, c.venue, ...c.cities].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (!rows.length){ $('#list').innerHTML = '<div class="empty">Brak koncertów dla tych filtrów.</div>'; return; }
+  let html = '', month = '';
+  for (const c of rows){
+    const m = new Date(c.date).toLocaleDateString('pl-PL', {month:'long', year:'numeric'});
+    if (m !== month){ if (month) html += '</div>'; html += `<h2 class="month">${esc(m)}</h2><div class="grid">`; month = m; }
+    const isNew = now - new Date(c.first_seen) < WEEK;
+    const where = [c.venue, cityOf(c)].filter(Boolean).join(', ');
+    const more = c.cities.length > 1 ? ` <span title="${esc(c.cities.join(', '))}">(+${c.cities.length - 1} miasta)</span>` : '';
+    html += `<article class="card">
+      ${c.picture ? `<img src="${esc(c.picture)}" alt="" loading="lazy">` : '<img alt="">'}
+      <div class="body">
+        <div class="artist">${esc(c.artist)} ${flag(c.country)}</div>
+        <div class="when">${esc(fmtDate(c.date))}</div>
+        <div class="where">📍 ${esc(where)}${more}</div>
+        ${c.title && c.title.toLowerCase() !== c.artist.toLowerCase() ? `<div class="title">${esc(c.title)}</div>` : ''}
+        <div class="tags">
+          ${isNew ? '<span class="tag new">NOWE</span>' : ''}
+          ${c.sold_out ? '<span class="tag sold">wyprzedane</span>' : ''}
+          <span class="tag">${esc(c.genre)}</span>
+        </div>
+        <div class="links">${c.links.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.source)}</a>`).join('')}</div>
+      </div></article>`;
+  }
+  $('#list').innerHTML = html + '</div>';
+}
+
+function fillSelect(sel, values){
+  for (const v of values) sel.insertAdjacentHTML('beforeend', `<option>${esc(v)}</option>`);
+}
+
+fetch('data/concerts.json', {cache:'no-cache'}).then(r => r.json()).then(d => {
+  DATA = d.concerts;
+  const upd = new Date(d.updated).toLocaleString('pl-PL', {dateStyle:'medium', timeStyle:'short'});
+  $('#meta').textContent = `${d.count} koncertów zagranicznych artystów · aktualizacja: ${upd} · skan co 6 godzin`;
+  const count = (arr) => Object.entries(arr.reduce((a,x)=>(a[x]=(a[x]||0)+1,a),{})).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  fillSelect($('#genre'), count(DATA.map(c => c.genre)));
+  fillSelect($('#city'), count(DATA.map(cityOf).filter(Boolean)));
+  $('#foot').textContent = 'Źródła: ' + Object.entries(d.sources).map(([k,v]) => v.ok ? `${k} (${v.count})` : `${k} (błąd)`).join(', ');
+  try { const s = JSON.parse(localStorage.getItem('koncerty-filtry') || '{}'); for (const k of ['q','genre','city']) if (s[k]) $('#'+k).value = s[k]; } catch {}
+  render();
+}).catch(() => { $('#meta').textContent = 'Nie udało się wczytać danych.'; });
+
+for (const id of ['q','genre','city','onlyNew']) $('#'+id).addEventListener('input', () => {
+  try { localStorage.setItem('koncerty-filtry', JSON.stringify({q:$('#q').value, genre:$('#genre').value, city:$('#city').value})); } catch {}
+  render();
+});
+</script>
+</body>
+</html>
